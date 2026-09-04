@@ -1,0 +1,50 @@
+# Reference compose for a self-hosted staging box (Fly.io/Render use their
+# own manifests — see docs/architecture.md). Supabase stays fully managed;
+# this only runs api/worker/scheduler + redis against it.
+name: mozar-alerta-backend-prod
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["node", "dist/main.js"]
+    env_file: .env
+    ports:
+      - "3333:3333"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["node", "dist/worker.js"]
+    env_file: .env
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["node", "dist/scheduler.js"]
+    env_file: .env
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:

@@ -1,0 +1,27 @@
+# Local development stack. Supabase (Postgres + Auth + Storage) is a cloud
+# project or run separately via the Supabase CLI — see README.md. This file
+# covers what Supabase doesn't provide: Redis (cache/BullMQ) and Mailhog
+# (catches outgoing email in dev).
+name: mozar-alerta-backend
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # web UI
+
+volumes:
+  redis_data:
