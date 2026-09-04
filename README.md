@@ -8,6 +8,86 @@ separado: [mozar-alerta](https://github.com/viniicorreia/mozar-alerta).
 Arquitetura completa do sistema (os dois repos) em
 [`docs/architecture.md`](docs/architecture.md).
 
+## 🚀 Rodando o projeto completo (backend + frontend)
+
+Este repo sozinho já sobe e responde `/health`, mas pra ver o portal e o
+admin funcionando é preciso subir o frontend também. Ordem recomendada:
+
+### 1. Clonar os dois repositórios lado a lado
+
+```bash
+git clone git@github.com:viniicorreia/mozar-alerta-backend.git
+git clone git@github.com:viniicorreia/mozar-alerta.git
+```
+
+### 2. Criar (ou reaproveitar) um projeto Supabase
+
+Um único projeto Supabase serve os dois repos. Se ainda não tem um, crie
+grátis em [supabase.com/dashboard](https://supabase.com/dashboard) →
+**New project** e guarde a senha do Postgres.
+
+Em **Settings → API**, anote `Project URL`, a chave `anon`/`publishable`
+e a `service_role` (secreta). Em **Settings → Database → Connection
+string → URI**, anote a `DATABASE_URL`.
+
+### 3. Subir este repo (backend)
+
+```bash
+cd mozar-alerta-backend
+pnpm install
+cp .env.example .env        # preencha com os dados do passo 2
+pnpm db:migrate              # aplica schema + RLS no Supabase
+pnpm dev                     # API em http://localhost:3333
+```
+
+Confirme: `curl http://localhost:3333/health` → `{"status":"ok"}`.
+
+### 4. Subir o frontend
+
+```bash
+cd ../mozar-alerta
+pnpm install
+cp apps/admin/.env.example apps/admin/.env
+```
+
+Preencha `apps/admin/.env`:
+
+```env
+VITE_API_URL=http://localhost:3333
+VITE_SUPABASE_URL=...                    # mesma URL do passo 2
+VITE_SUPABASE_PUBLISHABLE_KEY=...        # chave anon/publishable do passo 2
+```
+
+```bash
+pnpm dev            # web em :3000, admin em :5173
+```
+
+Detalhes completos do frontend no
+[README dele](https://github.com/viniicorreia/mozar-alerta#readme).
+
+### 5. Criar seu usuário admin
+
+O admin ainda não tem tela de cadastro — só login. Crie a conta via API
+do Supabase Auth e promova a `ADMIN`:
+
+```bash
+curl -X POST "$SUPABASE_URL/auth/v1/signup" \
+  -H "apikey: $SUPABASE_ANON_KEY" -H "Content-Type: application/json" \
+  -d '{"email":"voce@example.com","password":"SenhaForte123!"}'
+```
+
+```sql
+-- Supabase Studio → SQL Editor, ou psql com a DATABASE_URL
+update public.users set role = 'ADMIN', status = 'active'
+where email = 'voce@example.com';
+```
+
+Por padrão o Supabase exige confirmação de e-mail antes de emitir sessão
+— para testar sem clicar no link, desative em **Authentication →
+Providers → Email → Confirm email** (só em dev).
+
+---
+
 ## Stack
 
 - **Fastify** rodando três processos a partir da mesma imagem: `api`
