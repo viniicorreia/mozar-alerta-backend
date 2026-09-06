@@ -34,6 +34,7 @@ export async function newsRoutes(app: FastifyInstance) {
       categoryId,
       tag: query.tag,
       featured: query.featured,
+      q: query.q,
       page: query.page,
       perPage: query.perPage,
     });
