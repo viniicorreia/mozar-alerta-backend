@@ -1,4 +1,4 @@
-import { and, arrayContains, count, desc, eq, isNull, lte, type SQL } from "drizzle-orm";
+import { and, arrayContains, count, desc, eq, isNull, lte, sql, type SQL } from "drizzle-orm";
 import type { CreateNewsRequest, NewsStatus, UpdateNewsRequest } from "@mozar/types";
 import type { Database } from "../../platform/db/index.js";
 import { schema } from "../../platform/db/index.js";
@@ -12,6 +12,8 @@ export interface ListNewsFilters {
   categoryId?: string;
   tag?: string;
   featured?: boolean;
+  /** Free-text search over title + summary (Portuguese full-text). */
+  q?: string;
   page: number;
   perPage: number;
 }
@@ -36,6 +38,12 @@ export function createNewsService(db: Database) {
       if (filters.categoryId) conditions.push(eq(schema.news.categoryId, filters.categoryId));
       if (filters.featured !== undefined) conditions.push(eq(schema.news.featured, filters.featured));
       if (filters.tag) conditions.push(arrayContains(schema.news.tags, [filters.tag]));
+      if (filters.q) {
+        // Uses the news_search_idx GIN index (to_tsvector('portuguese', title || ' ' || summary)).
+        conditions.push(
+          sql`to_tsvector('portuguese', ${schema.news.title} || ' ' || ${schema.news.summary}) @@ plainto_tsquery('portuguese', ${filters.q})`,
+        );
+      }
 
       const where = and(...conditions);
       const offset = (filters.page - 1) * filters.perPage;

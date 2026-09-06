@@ -66,5 +66,7 @@ export const newsListQuerySchema = z.object({
   tag: z.string().optional(),
   featured: z.coerce.boolean().optional(),
   status: newsStatusSchema.optional(),
+  /** Free-text search over title + summary (Portuguese full-text). */
+  q: z.string().trim().min(2).max(120).optional(),
 });
 export type NewsListQuery = z.infer<typeof newsListQuerySchema>;
